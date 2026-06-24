@@ -64,6 +64,20 @@ npm pack
 npm publish --access public
 ```
 
+如果 npm 返回 `E403`，并提示需要 two-factor authentication，说明当前 npm
+账号开启了 2FA。打开认证器获取 6 位一次性验证码，然后重新发布：
+
+```sh
+npm publish --access public --otp 123456
+```
+
+把 `123456` 替换成认证器里的实时验证码。验证码通常几十秒后失效，失败时重新取
+最新验证码再执行一次。
+
+如果使用 npm automation / granular access token，需要创建允许发布且启用
+`bypass 2FA` 的 token，并在 CI 或本机环境中配置 `NPM_TOKEN`；普通密码登录仍然
+需要 `--otp`。
+
 后续 patch 版本发布：
 
 ```sh
