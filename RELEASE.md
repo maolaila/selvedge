@@ -1,30 +1,30 @@
-# Release Guide
+# 发布指南
 
-This package publishes as `@maolaila/selvedge` and exposes the `selvedge` binary.
+Selvedge 当前以 `@maolaila/selvedge` 这个 npm 包名发布，并暴露
+`selvedge` 命令行入口。
 
-## Prerequisites
+## 发布前准备
 
-1. Use Node.js 20 or newer.
-2. Install pnpm 9.x.
-3. Log in to npm with an account that can publish under the `@maolaila` scope:
+1. 使用 Node.js 20 或更新版本。
+2. 安装 pnpm 9.x。
+3. 使用有权限发布 `@maolaila` scope 的 npm 账号登录：
 
 ```sh
 npm login
 npm whoami
 ```
 
-4. Confirm the package name is still available or owned by you:
+4. 确认包名仍可用，或者当前账号有权限管理该包：
 
 ```sh
 npm view @maolaila/selvedge name version --json
 ```
 
-An npm `E404` means the package has not been published yet or is not visible to
-the current account.
+如果 npm 返回 `E404`，通常表示这个包还没有发布，或者当前账号看不到该包。
 
-## Prepublish Verification
+## 发布前验证
 
-Run the full local gate:
+先跑完整本地检查：
 
 ```sh
 pnpm install --frozen-lockfile
@@ -35,7 +35,7 @@ npm pack --dry-run
 npm publish --dry-run --access public
 ```
 
-Test the generated tarball in a temporary project:
+再用打包产物在一个临时项目里试装：
 
 ```sh
 mkdir ../selvedge-smoke
@@ -48,22 +48,23 @@ npx --no-install selvedge validate
 npx --no-install selvedge dashboard --no-open --port 17371
 ```
 
-If `npm pack --dry-run` was used, create a real tarball first:
+如果前面只跑了 `npm pack --dry-run`，它不会留下真实 tarball。需要先回到
+Selvedge 仓库生成实际包文件：
 
 ```sh
 cd ../selvedge
 npm pack
 ```
 
-## Publish
+## 正式发布
 
-For the first public release:
+第一次公开发布：
 
 ```sh
 npm publish --access public
 ```
 
-For later releases:
+后续 patch 版本发布：
 
 ```sh
 npm version patch
@@ -75,7 +76,7 @@ npm publish --access public
 git push origin main --follow-tags
 ```
 
-## Verify After Publish
+## 发布后验证
 
 ```sh
 npm view @maolaila/selvedge name version dist-tags --json
@@ -87,11 +88,12 @@ npx selvedge init
 npx selvedge status
 ```
 
-## Notes
+## 注意事项
 
-- `selvedge` is already occupied on npm, so the scoped package is used.
-- If you prefer `@selvedge/cli`, create or join that npm organization first,
-  then update `package.json`, README, and generated `selvedge.yaml` package
-  name expectations before publishing.
-- Auto commit and push are disabled by default; pass `--auto-push` only for
-  repositories where that behavior is explicitly allowed.
+- `selvedge` 这个非 scope 包名已经被 npm 上的其它包占用，所以当前使用
+  `@maolaila/selvedge`。
+- 如果后续想改成 `@selvedge/cli`，需要先创建或加入对应 npm organization，
+  然后同步修改 `package.json`、README，以及 `selvedge init` 生成的
+  `selvedge.yaml` 里的包名期望。
+- 默认不会自动 commit 或 push。只有在仓库策略明确允许时，才给运行命令传
+  `--auto-push`。
