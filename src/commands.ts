@@ -59,6 +59,89 @@ import type {
   SelvedgeWorkflowTask
 } from './types';
 
+export interface CodexCliPreflight {
+  readonly available: boolean;
+  readonly executable: string;
+  readonly version: string | null;
+  readonly message: string;
+  readonly details: readonly string[];
+}
+
+function codexCliInstallDetails(executable: string): readonly string[] {
+  return [
+    `Expected executable: ${executable}`,
+    'Windows installer: powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"',
+    'npm installer: npm install -g @openai/codex',
+    'After installing, run: codex'
+  ];
+}
+
+export function checkCodexCliPreflight(args: readonly string[] = []): CodexCliPreflight {
+  let executable = 'codex';
+  try {
+    executable = resolveCodexRunnerOptions(args).codexExecutable;
+  } catch (error) {
+    return {
+      available: false,
+      executable,
+      version: null,
+      message: `Codex CLI configuration is invalid: ${error instanceof Error ? error.message : String(error)}`,
+      details: codexCliInstallDetails(executable)
+    };
+  }
+  try {
+    const result = spawnSync(executable, ['--version'], {
+      encoding: 'utf8',
+      timeout: 10_000,
+      shell: process.platform === 'win32'
+    });
+    const output = [result.stdout, result.stderr]
+      .filter((item): item is string => Boolean(item && item.trim()))
+      .join('\n')
+      .trim();
+    const version = output.split(/\r?\n/).find((line) => line.trim().length > 0)?.trim() ?? null;
+    if (result.status === 0) {
+      return {
+        available: true,
+        executable,
+        version,
+        message: version ? `Codex CLI is available: ${version}` : 'Codex CLI is available.',
+        details: []
+      };
+    }
+    return {
+      available: false,
+      executable,
+      version,
+      message: `Codex CLI check failed with exit code ${result.status ?? 'unknown'}.`,
+      details: [
+        output || 'No output from codex --version.',
+        ...codexCliInstallDetails(executable)
+      ]
+    };
+  } catch (error) {
+    return {
+      available: false,
+      executable,
+      version: null,
+      message: `Codex CLI was not found or could not run: ${error instanceof Error ? error.message : String(error)}`,
+      details: codexCliInstallDetails(executable)
+    };
+  }
+}
+
+function codexCliRequiredMessage(preflight: CodexCliPreflight): string {
+  return [
+    '需要先安装并登录 Codex CLI，才能使用 AI 提问、目标拆解、架构建议或 Codex runner 自动执行。',
+    preflight.message,
+    ...preflight.details
+  ].join(' ');
+}
+
+function taskRequiresCodexCli(task: SelvedgeWorkflowTask): boolean {
+  return task.runner === 'codex-app-agent' || task.runner === 'codex-cli';
+}
+
 function printIssueSummary(model: GameHubReadOnlyModel): void {
   if (model.issues.length === 0) {
     console.log('No validation issues.');
@@ -285,6 +368,8 @@ function architectureProposalPrompt(workflow: SelvedgeGoalWorkflow, model: GameH
     '{"requiresArchitectureConfirmation":true,"summary":"short","recommendedStack":["..."],"reasons":["..."],"projectStructure":["..."],"initializationPlan":["..."],"risks":["..."],"questions":[{"id":"kebab-id","question":"plain user-facing question","reason":"why this matters","options":[{"id":"kebab-id","label":"short","description":"short","answer":"durable requirement answer"}]}]}',
     '',
     'Rules:',
+    '- Use Simplified Chinese as the primary language for every user-facing summary, question, option label, option description, reason, risk, and plan item. Keep technical identifiers, paths, commands, package names, and JSON keys in their original form.',
+    '- If the user wrote the goal in another language, keep the main answer in Simplified Chinese and include short original-language technical terms only where they improve clarity.',
     '- If the workflow will initialize or scaffold a new project/app/repo/product structure, set requiresArchitectureConfirmation=true and provide a concrete stack and project structure with reasons.',
     '- If the workflow is maintenance, migration, QA, docs, or another task inside an existing project, set requiresArchitectureConfirmation=false and keep architecture lists short.',
     '- Never ask the user to understand internal terms such as WriteSet, runner, or stop policy without explaining the practical choice.',
@@ -1446,6 +1531,7 @@ function intakeAnswerPrompt(
     '{"answer":"durable requirement text","status":"accepted|needs-clarification","followUpQuestion":{"id":"kebab-id","question":"plain user-facing question","reason":"why it matters","options":[{"id":"kebab-id","label":"short","description":"short","answer":"durable answer"}]},"note":"short"}',
     '',
     'Rules:',
+    '- Use Simplified Chinese as the primary language for user-facing answer text and any follow-up question. Keep technical identifiers, paths, commands, package names, and JSON keys in their original form.',
     '- Keep the user answer authoritative. Do not override a custom answer with an option unless the user selected that option.',
     '- Make the answer concrete enough for a task runner and QA reviewer.',
     '- If the missing detail affects authority sources, WriteSet, validation, stop policy, architecture initialization, or user acceptance, return status needs-clarification with one follow-up question.',
@@ -1567,6 +1653,14 @@ export function runInit(options: CliOptions): number {
   );
   console.log('Selvedge local state initialized under .selvedge/.');
   console.log(existsSync(configPath) ? 'Selvedge config ready at selvedge.yaml.' : 'Selvedge config was not created.');
+  const codexPreflight = checkCodexCliPreflight(options.args);
+  if (!codexPreflight.available) {
+    console.log('Codex CLI not configured. Dashboard, status, and validate can still run.');
+    console.log('AI intake, architecture decomposition, and Codex runner execution require Codex CLI.');
+    console.log('Install on Windows: powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"');
+    console.log('Or install with npm: npm install -g @openai/codex');
+    console.log('Then run: codex');
+  }
   return 0;
 }
 
@@ -3691,6 +3785,21 @@ export async function runNextWorkflow(options: CliOptions): Promise<number> {
       continue;
     }
     if (task.runner === 'codex-app-agent' || task.runner === 'codex-cli') {
+      const codexPreflight = checkCodexCliPreflight(options.args);
+      if (!codexPreflight.available) {
+        const message = codexCliRequiredMessage(codexPreflight);
+        workflow = setWorkflowTaskStatus(workflow, task.id, 'NeedsRunner', message);
+        saveGoalWorkflow(options.cwd, workflow);
+        writeWorkflowRunStatus(options.cwd, workflow, `Codex CLI missing before ${task.id}: ${codexPreflight.message}`);
+        writeLoopStatus(options.cwd, workflow.id, 'NeedsRunner', message, {
+          ...workflowTaskStatusDetails(workflow, task, heartbeatContext.context),
+          runner: task.runner,
+          codexExecutable: codexPreflight.executable,
+          details: codexPreflight.details
+        });
+        console.error(message);
+        return 1;
+      }
       const codexRunnerOptions = resolveCodexRunnerOptions(options.args);
       const capacityRetryOptions = resolveCapacityRetryOptions(options.args);
       const heartbeatTemplate = resolveHeartbeatTemplateForRun(options.cwd);
@@ -5859,6 +5968,29 @@ function renderActiveWorkflow(goal: DashboardGoalSummary | null, copy: Dashboard
   </section>`;
 }
 
+function renderCodexCliPanel(preflight: CodexCliPreflight, locale: DashboardLocale): string {
+  if (locale === 'zh') {
+    const details = preflight.details.length > 0
+      ? `<ul>${preflight.details.map((item) => `<li><code>${escapeHtml(item)}</code></li>`).join('')}</ul>`
+      : '';
+    return `<section class="callout ${preflight.available ? 'ok' : 'warning'}">
+      <strong>Codex CLI / AI 执行器：${preflight.available ? '已就绪' : '未配置'}</strong>
+      <p>${escapeHtml(preflight.available ? `${preflight.message}。可以使用 AI 提问、目标拆解、架构建议和自动执行。` : 'Dashboard 可以打开，但 AI 提问、目标拆解、架构建议和 Codex runner 自动执行需要先安装并登录 Codex CLI。')}</p>
+      ${preflight.available && preflight.version ? `<p class="muted">${escapeHtml(preflight.version)}</p>` : ''}
+      ${details}
+    </section>`;
+  }
+  const details = preflight.details.length > 0
+    ? `<ul>${preflight.details.map((item) => `<li><code>${escapeHtml(item)}</code></li>`).join('')}</ul>`
+    : '';
+  return `<section class="callout ${preflight.available ? 'ok' : 'warning'}">
+    <strong>Codex CLI / AI runner: ${preflight.available ? 'ready' : 'not configured'}</strong>
+    <p>${escapeHtml(preflight.available ? `${preflight.message}. AI intake, decomposition, architecture review, and automation are available.` : 'The dashboard can open, but AI intake, decomposition, architecture review, and Codex runner execution require Codex CLI to be installed and signed in.')}</p>
+    ${preflight.available && preflight.version ? `<p class="muted">${escapeHtml(preflight.version)}</p>` : ''}
+    ${details}
+  </section>`;
+}
+
 function joinForTextarea(items: readonly string[]): string {
   return items.join('\n');
 }
@@ -6253,7 +6385,8 @@ function dashboardHtmlV2(
   runControl: Record<string, unknown> | null,
   latestLoopStatus: Record<string, unknown> | null,
   locale: DashboardLocale,
-  thinkingModelLabel: string
+  thinkingModelLabel: string,
+  codexPreflight: CodexCliPreflight
 ): string {
   const copy = DASHBOARD_COPY[locale];
   const loadingMessage = dashboardThinkingMessage(locale, thinkingModelLabel);
@@ -6301,6 +6434,8 @@ function dashboardHtmlV2(
     .panel { margin: 18px 0; }
     .subpanel { margin: 12px 0; }
     .callout { background: #eef7ff; border: 1px solid #b9ddff; border-radius: 8px; padding: 14px; margin: 18px 0; }
+    .callout.warning { background: #fff7ed; border-color: #fdba74; }
+    .callout.ok { background: #ecfdf5; border-color: #86efac; }
     .label { font-size: 12px; text-transform: uppercase; color: #6a7280; letter-spacing: .02em; }
     .value { font-size: 20px; font-weight: 650; margin-top: 4px; }
     .muted, span { color: #6a7280; font-size: 13px; }
@@ -6583,6 +6718,7 @@ function dashboardHtmlV2(
     <p id="stopConditionText" class="muted">${escapeHtml(`${copy.stopCondition}: ${runView.stopConditionSummary}`)}</p>
     <p id="lastLiveUpdate" class="muted"></p>
   </section>
+  ${renderCodexCliPanel(codexPreflight, locale)}
   <section class="grid">
     <div class="tile"><div class="label">${escapeHtml(copy.goalsMetric)}</div><div id="goalsMetricValue" class="value">${goals.length}</div></div>
     <div class="tile"><div class="label">${escapeHtml(copy.stopAgentMetric)}</div><div id="stopAgentMetricValue" class="value">${model.stopFile.exists ? 'present' : 'absent'}</div></div>
@@ -6649,7 +6785,7 @@ function dashboardHtmlV2(
 </html>`;
 }
 
-export function renderDashboardHtmlForTest(cwd: string, locale: DashboardLocale = 'en'): string {
+export function renderDashboardHtmlForTest(cwd: string, locale: DashboardLocale = 'en', runnerArgs: readonly string[] = []): string {
   const model = buildReadOnlyModel(cwd);
   const goals = listGoalSummaries(cwd);
   return dashboardHtmlV2(
@@ -6661,7 +6797,8 @@ export function renderDashboardHtmlForTest(cwd: string, locale: DashboardLocale 
     readDashboardRunControl(cwd),
     latestLoopStatusForGoals(cwd, goals),
     locale,
-    'gpt-5.5-xhigh'
+    'gpt-5.5-xhigh',
+    checkCodexCliPreflight(runnerArgs)
   );
 }
 
@@ -6878,6 +7015,20 @@ export function runServe(options: CliOptions): number {
     if (request.method === 'POST' && requestUrl.pathname === '/actions/project-objective') {
       const body = await readRequestBody(request);
       const model = buildReadOnlyModel(options.cwd);
+      const runnerArgs = dashboardCodexRunnerArgs(options.args);
+      const codexPreflight = checkCodexCliPreflight(runnerArgs);
+      if (!codexPreflight.available) {
+        writeJson(dashboardRunControlPath(options.cwd), {
+          ...compactDashboardRunControl(readDashboardRunControl(options.cwd)),
+          status: 'NeedsCodexCli',
+          updatedAt: new Date().toISOString(),
+          message: codexCliRequiredMessage(codexPreflight),
+          codexExecutable: codexPreflight.executable,
+          codexDetails: codexPreflight.details
+        });
+        redirectDashboard(response, locale);
+        return;
+      }
       const existing = readProjectObjective(options.cwd);
       const plannedWorkflowId =
         dashboardWorkflowIds(options.cwd).length === 0
@@ -6889,7 +7040,7 @@ export function runServe(options: CliOptions): number {
         response.end('Project objective total goal is required.');
         return;
       }
-      const saveResult = saveProjectObjectiveWithReview(options.cwd, draft, dashboardCodexRunnerArgs(options.args));
+      const saveResult = saveProjectObjectiveWithReview(options.cwd, draft, runnerArgs);
       if (saveResult.saved && plannedWorkflowId && saveResult.objective) {
         const workflow = enhanceDashboardWorkflowWithAi(
           options.cwd,
@@ -6898,7 +7049,7 @@ export function runServe(options: CliOptions): number {
             model
           ),
           model,
-          dashboardCodexRunnerArgs(options.args)
+          runnerArgs
         );
         writeWorkflowResult(options.cwd, workflow, model);
       }
@@ -6918,6 +7069,20 @@ export function runServe(options: CliOptions): number {
     if (request.method === 'POST' && requestUrl.pathname === '/actions/create-goal') {
       const body = await readRequestBody(request);
       const model = buildReadOnlyModel(options.cwd);
+      const runnerArgs = dashboardCodexRunnerArgs(options.args);
+      const codexPreflight = checkCodexCliPreflight(runnerArgs);
+      if (!codexPreflight.available) {
+        writeJson(dashboardRunControlPath(options.cwd), {
+          ...compactDashboardRunControl(readDashboardRunControl(options.cwd)),
+          status: 'NeedsCodexCli',
+          updatedAt: new Date().toISOString(),
+          message: codexCliRequiredMessage(codexPreflight),
+          codexExecutable: codexPreflight.executable,
+          codexDetails: codexPreflight.details
+        });
+        redirectDashboard(response, locale);
+        return;
+      }
       const input = createDashboardGoalInput(options.cwd, body);
       if (!input) {
         response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -6928,7 +7093,7 @@ export function runServe(options: CliOptions): number {
         options.cwd,
         createGoalWorkflow(input, model),
         model,
-        dashboardCodexRunnerArgs(options.args)
+        runnerArgs
       );
       writeWorkflowResult(options.cwd, workflow, model);
       redirectDashboard(response, locale);
@@ -6949,12 +7114,27 @@ export function runServe(options: CliOptions): number {
         response.end('Goal, question, and either an option or custom answer are required.');
         return;
       }
+      const runnerArgs = dashboardCodexRunnerArgs(options.args);
+      const codexPreflight = checkCodexCliPreflight(runnerArgs);
+      if (!codexPreflight.available) {
+        writeJson(dashboardRunControlPath(options.cwd), {
+          ...compactDashboardRunControl(readDashboardRunControl(options.cwd)),
+          status: 'NeedsCodexCli',
+          updatedAt: new Date().toISOString(),
+          goalId,
+          message: codexCliRequiredMessage(codexPreflight),
+          codexExecutable: codexPreflight.executable,
+          codexDetails: codexPreflight.details
+        });
+        redirectDashboard(response, locale);
+        return;
+      }
       const aiAnswer = normalizeIntakeAnswerWithAi(
         options.cwd,
         workflow,
         questionId,
         answer,
-        dashboardCodexRunnerArgs(options.args)
+        runnerArgs
       );
       answerWorkflowIntakeQuestion(
         options.cwd,
@@ -7075,6 +7255,29 @@ export function runServe(options: CliOptions): number {
         redirectDashboard(response, locale);
         return;
       }
+      const nextTask = selectNextWorkflowTask(workflow);
+      if (nextTask && taskRequiresCodexCli(nextTask)) {
+        const codexPreflight = checkCodexCliPreflight(runnerArgs);
+        if (!codexPreflight.available) {
+          writeJson(dashboardRunControlPath(options.cwd), {
+            ...compactDashboardRunControl(readDashboardRunControl(options.cwd)),
+            status: 'NeedsCodexCli',
+            updatedAt: new Date().toISOString(),
+            goalId,
+            message: codexCliRequiredMessage(codexPreflight),
+            codexExecutable: codexPreflight.executable,
+            codexDetails: codexPreflight.details
+          });
+          writeLoopStatus(options.cwd, goalId, 'NeedsRunner', codexCliRequiredMessage(codexPreflight), {
+            taskId: nextTask.id,
+            runner: nextTask.runner,
+            codexExecutable: codexPreflight.executable,
+            details: codexPreflight.details
+          });
+          redirectDashboard(response, locale);
+          return;
+        }
+      }
       const continuationWorkflow = createContinuousWorkflowContinuationForDashboardStart(
         options.cwd,
         workflow,
@@ -7184,7 +7387,8 @@ export function runServe(options: CliOptions): number {
       runControl,
       latestLoopStatus,
       locale,
-      dashboardThinkingModelLabel(options.args)
+      dashboardThinkingModelLabel(options.args),
+      checkCodexCliPreflight(dashboardCodexRunnerArgs(options.args))
     ));
   });
   server.on('upgrade', (request, socket) => {

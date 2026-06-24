@@ -1,6 +1,6 @@
 {
   "name": "@maolaila1/selvedge",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Local CLI and dashboard control plane for bounded coding-agent workflows",
   "license": "MIT",
   "repository": {

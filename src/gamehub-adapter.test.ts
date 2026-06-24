@@ -9,6 +9,7 @@ import {
   actionableGitStatusLines,
   artifactContainsBlockingSignal,
   capacityRetryDelaySeconds,
+  checkCodexCliPreflight,
   clearSavedStopCondition,
   createCompletedWorkflowContinuationForDashboardStart,
   createContinuousWorkflowContinuationForDashboardStart,
@@ -306,6 +307,41 @@ describe('GameHub read-only adapter', () => {
     expect(prompt).toContain('Treat answer options as optional suggestions');
     expect(prompt).toContain('fully custom answer');
     expect(requirements).toContain('a user-written custom answer is equally authoritative');
+  });
+
+  test('creates Chinese-first intake questions for dashboard workflows', () => {
+    const model = buildReadOnlyModel(fixtureRepo());
+    const workflow = createGoalWorkflow(
+      {
+        id: 'zh-intake',
+        title: '中文需求引导',
+        goal: '把一个新项目想法拆成可自动执行的 Selvedge 工作流',
+        workstream: 'assigned-work',
+        source: 'test',
+        mode: 'goal-workflow',
+        profile: 'universal-autopilot',
+        commands: [],
+        writeSet: [],
+        validation: [],
+        answers: [],
+        nonInteractive: false
+      },
+      model
+    );
+
+    expect(workflow.aiIntake.questions.find((item) => item.id === 'business-outcome')?.question).toContain('业务结果');
+    expect(workflow.aiIntake.questions.find((item) => item.id === 'stop-and-recovery')?.question).toContain('停止');
+  });
+
+  test('reports missing Codex CLI in dashboard readiness panel', () => {
+    const cwd = fixtureRepo();
+    const preflight = checkCodexCliPreflight(['--codex-executable', 'selvedge-test-missing-codex']);
+    const html = renderDashboardHtmlForTest(cwd, 'zh', ['--codex-executable', 'selvedge-test-missing-codex']);
+
+    expect(preflight.available).toBe(false);
+    expect(html).toContain('Codex CLI / AI 执行器');
+    expect(html).toContain('未配置');
+    expect(html).toContain('npm install -g @openai/codex');
   });
 
   test('records the small-step queue policy on goal workflows', () => {

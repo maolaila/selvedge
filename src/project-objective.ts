@@ -246,6 +246,7 @@ export function buildProjectObjectiveReviewPrompt(
     '{"status":"accepted|needs-revision","summary":"short","conflicts":["..."],"suggestions":["..."]}',
     '',
     'Rules:',
+    '- Use Simplified Chinese as the primary language for summary, conflicts, and suggestions. Keep technical identifiers, paths, commands, package names, and JSON keys in their original form.',
     '- Use status "accepted" only when the draft has no logical conflict with itself, the existing objective, or one-root-objective monorepo semantics.',
     '- Use status "needs-revision" when the draft contains contradictory goals, unclear authority, conflicting write boundaries, impossible stop expectations, or multiple unrelated root objectives.',
     '- Do not reject merely because the monorepo has multiple scopes; scopes are expected.',

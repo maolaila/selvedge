@@ -159,29 +159,29 @@ function kgSlotsTargetQuestion(
     /auto|agent|controller|master|总控/i.test(rawAnswer);
   if (answerLooksLikePlaceholder) {
     const options = [
-      option('auto-select', 'Let Selvedge choose', 'Selvedge selects the next eligible slots target and records evidence.', 'AuthorizedAutoSelect: Selvedge master controller must choose the next eligible KG slots-class target during source inventory, record the candidate set, exclusion reasons, selected route/gameCode, and selection evidence before runtime work.'),
-      option('specific-target', 'I will provide a target', 'Use this when the route/gameCode is already known.', 'NeedsUserTarget: user will provide the concrete KG slots target, route, and gameCode before runtime work.'),
-      option('pause-selection', 'Stop if candidates are unclear', 'Do not guess if source evidence is incomplete.', 'Stop and ask for user confirmation if no eligible slots-class candidate can be proven from authority sources.')
+      option('auto-select', '让 Selvedge 选择', 'Selvedge 选择下一款符合条件的 slots 目标，并记录证据。', 'AuthorizedAutoSelect: Selvedge 总控必须在 source inventory 阶段选择下一款符合条件的 KG slots 目标，记录候选集、排除原因、route/gameCode 和选择证据，然后才能进入 runtime work。'),
+      option('specific-target', '我提供目标', '已知道 route/gameCode 时使用。', 'NeedsUserTarget: 用户会在 runtime work 前提供明确的 KG slots 目标、route 和 gameCode。'),
+      option('pause-selection', '不清楚就停止', '源码证据不足时不要猜。', '如果无法从权威事实源证明存在符合条件的 slots 候选，停止并请求用户确认。')
     ];
     return {
       id: 'target-game',
-      question: 'Which KG slots-class game is the next target, and what route/gameCode should GameHub use?',
-      reason: 'A slots migration needs a concrete target before runtime work, but the user authorized Selvedge to choose the next slots target.',
+      question: '下一款 KG slots 类游戏目标是哪一个？GameHub 应该使用哪个 route/gameCode？',
+      reason: 'slots 迁移进入 runtime work 前必须有明确目标；如果用户授权 Selvedge 自动选择，也必须先记录选择证据。',
       answer:
-        'AuthorizedAutoSelect: Selvedge master controller must choose the next eligible KG slots-class target during source inventory, record the candidate set, exclusion reasons, selected route/gameCode, and selection evidence before runtime work.',
+        'AuthorizedAutoSelect: Selvedge 总控必须在 source inventory 阶段选择下一款符合条件的 KG slots 目标，记录候选集、排除原因、route/gameCode 和选择证据，然后才能进入 runtime work。',
       status: nonInteractive ? 'assumption' : 'answered',
       options
     };
   }
   return {
     id: 'target-game',
-    question: 'Which KG slots-class game is the next target, and what route/gameCode should GameHub use?',
-    reason: 'A slots migration cannot start from an unnamed catalog entry.',
+    question: '下一款 KG slots 类游戏目标是哪一个？GameHub 应该使用哪个 route/gameCode？',
+    reason: 'slots 迁移不能从未命名的目录项开始。',
     answer: rawAnswer,
     status: 'answered',
     options: [
-      option('auto-select', 'Let Selvedge choose', 'Selvedge selects the next eligible slots target and records evidence.', 'AuthorizedAutoSelect: Selvedge master controller must choose the next eligible KG slots-class target during source inventory, record the candidate set, exclusion reasons, selected route/gameCode, and selection evidence before runtime work.'),
-      option('specific-target', 'I will provide a target', 'Use this when the route/gameCode is already known.', 'NeedsUserTarget: user will provide the concrete KG slots target, route, and gameCode before runtime work.')
+      option('auto-select', '让 Selvedge 选择', 'Selvedge 选择下一款符合条件的 slots 目标，并记录证据。', 'AuthorizedAutoSelect: Selvedge 总控必须在 source inventory 阶段选择下一款符合条件的 KG slots 目标，记录候选集、排除原因、route/gameCode 和选择证据，然后才能进入 runtime work。'),
+      option('specific-target', '我提供目标', '已知道 route/gameCode 时使用。', 'NeedsUserTarget: 用户会在 runtime work 前提供明确的 KG slots 目标、route 和 gameCode。')
     ]
   };
 }
@@ -194,14 +194,14 @@ function kgGameTargetQuestion(
   const rawAnswer = answerMap.get('target-game')?.trim();
   return {
     id: 'target-game',
-    question: 'Which KG game type and target game should be migrated, and what route/gameCode should GameHub use?',
-    reason: 'A new KG game-type migration must start from one concrete source target and must not reuse slots assumptions.',
+    question: '要迁移哪一种 KG 游戏类型和哪一款具体游戏？GameHub 应该使用哪个 route/gameCode？',
+    reason: '新的 KG 游戏类型迁移必须从一个明确的源码目标开始，不能复用 slots 假设。',
     answer: rawAnswer || fallbackGoal,
     status: rawAnswer || nonInteractive ? 'answered' : 'needs-user',
     options: [
-      option('specific-target', 'Use named target', 'Use this when the route/gameCode or source folder is known.', 'User provided the concrete KG target, source folder, route, and gameCode before runtime work.'),
-      option('source-intake-first', 'Discover from sources', 'Use this when the type is approved but the exact source entry still needs inventory.', 'Selvedge must do docs-only KG source intake first, identify one concrete target, and stop if target evidence is unclear.'),
-      option('pause-selection', 'Stop if unclear', 'Do not guess a new type target.', 'Stop and ask for user confirmation if the KG target, route, or game type cannot be proven from authority sources.')
+      option('specific-target', '使用指定目标', '已知道 route/gameCode 或源码目录时使用。', '用户已在 runtime work 前提供明确的 KG 目标、源码目录、route 和 gameCode。'),
+      option('source-intake-first', '先从源码盘点', '类型已批准但具体源码入口还需要盘点时使用。', 'Selvedge 必须先做 docs-only KG source intake，识别一个明确目标；如果目标证据不清楚，停止并请求用户确认。'),
+      option('pause-selection', '不清楚就停止', '不要猜测新类型目标。', '如果无法从权威事实源证明 KG 目标、route 或游戏类型，停止并请求用户确认。')
     ]
   };
 }
@@ -212,72 +212,72 @@ function buildQuestions(input: GoalWorkflowInput, model: GameHubReadOnlyModel): 
     question(
       answers,
       'business-outcome',
-      'What business outcome must this goal produce, and what is explicitly out of scope?',
-      'Prevents the planner from expanding an objective into unrelated product work.',
+      '这个目标最终要交付什么业务结果？哪些内容明确不在范围内？',
+      '防止规划器把目标扩展成无关的产品工作。',
       input.goal,
       input.nonInteractive
     ),
     question(
       answers,
       'users-and-entry',
-      'Who will use the result, and what install or execution form should they use first?',
-      'Defines the product surface, package form, and first-run path.',
-      'CLI-first npm/pnpm usage with local control console; native installer is later enterprise packaging.',
+      '谁会使用这个结果？他们第一次应该通过什么安装或执行方式使用？',
+      '明确产品入口、包形态和首次运行路径。',
+      '优先支持 npm/pnpm CLI 和本地 dashboard 控制台；原生安装器属于后续企业包装。',
       input.nonInteractive
     ),
     question(
       answers,
       'authority-sources',
-      'Which documents, APIs, source projects, or runtime evidence are authoritative?',
-      'Locks down fact sources before implementation edits.',
-      'Use current user direction, selvedge.yaml, tools/selvedge docs, TASK_BOARD, AGENTS.md, and existing autopilot scripts.',
+      '哪些文档、API、源码项目或运行证据是权威事实源？',
+      '在写实现前锁定事实来源。',
+      '使用当前用户指令、selvedge.yaml、Selvedge 文档、TASK_BOARD、AGENTS.md 和现有 autopilot 脚本。',
       input.nonInteractive
     ),
     question(
       answers,
       'write-boundary',
-      'Which files may the work modify, and which files or systems are forbidden?',
-      'Protects the project from uncontrolled long-running changes.',
+      '这项工作允许修改哪些文件？哪些文件或系统禁止修改？',
+      '防止长期自动执行产生失控改动。',
       input.writeSet.length > 0 ? input.writeSet.join(', ') : DEFAULT_GOAL_WRITE_SET.join(', '),
       input.nonInteractive
     ),
     question(
       answers,
       'development-flow',
-      'What development stages should run before QA starts?',
-      'Separates requirement capture, implementation, and verification.',
-      'intake -> goal documentation -> task decomposition -> bounded development task(s)',
+      '进入 QA 前应该经历哪些开发阶段？',
+      '把需求澄清、实现和验证分开。',
+      'intake -> 目标文档 -> 任务拆解 -> 有边界的开发任务',
       input.nonInteractive
     ),
     question(
       answers,
       'qa-flow',
-      'What QA stages prove the work is acceptable?',
-      'Makes acceptance evidence explicit instead of relying on implementation claims.',
+      '哪些 QA 阶段或证据可以证明工作可接受？',
+      '让验收证据明确，而不是只依赖实现者描述。',
       input.validation.length > 0 ? input.validation.join('; ') : DEFAULT_GOAL_VALIDATION.join('; '),
       input.nonInteractive
     ),
     question(
       answers,
       'stop-and-recovery',
-      'When should Selvedge stop, ask the user, retry, or record a blocker?',
-      'Required for unattended or long-running operation.',
-      'Stop on validation failure, unsafe WriteSet, missing authority, unsupported runner, STOP policy conflict, or unclear user decision.',
+      'Selvedge 在什么情况下应该停止、询问用户、重试或记录 blocker？',
+      '无人值守或长期运行必须有清晰停机策略。',
+      '遇到验证失败、不安全 WriteSet、缺少权威事实源、不支持的 runner、STOP policy 冲突或用户决策不清楚时停止。',
       input.nonInteractive
     ),
     question(
       answers,
       'handoff',
-      'What should the user see when the run is done or blocked?',
-      'Defines the status/evidence surface needed for trust.',
-      'Goal docs, task queue state, command logs, validation results, failure classification, next action, and rollback guidance.',
+      '运行完成或阻塞时，用户应该看到哪些状态和证据？',
+      '定义建立信任所需的状态和证据界面。',
+      '目标文档、任务队列状态、命令日志、验证结果、失败分类、下一步动作和回滚指引。',
       input.nonInteractive
     ),
     question(
       answers,
       'gamehub-current-state',
-      'What does the current GameHub adapter say about executable work?',
-      'Keeps Selvedge aligned with existing Autopilot gates.',
+      '当前 GameHub adapter 对可执行工作有什么判断？',
+      '让 Selvedge 与既有 Autopilot 阶段门保持一致。',
       `${model.firstExecutableTask.reason} ${model.selvedgeMainline.reason}`,
       true
     )
@@ -291,9 +291,9 @@ function buildQuestions(input: GoalWorkflowInput, model: GameHubReadOnlyModel): 
       question(
         answers,
         'kg-source-paths',
-        'Which KG Cocos and KG PHP paths prove the target game behavior?',
-        'Feature inventory and parity ledger must be source-proven before runtime work.',
-        '../kg-cocos-client and ../kg-php are read-only primary sources; ../kg is a read-only fallback only when primary sources are missing.',
+        '哪些 KG Cocos 和 KG PHP 路径可以证明目标游戏行为？',
+        '进入 runtime work 前，功能盘点和 parity ledger 必须有源码证据。',
+        '../kg-cocos-client 和 ../kg-php 是只读主事实源；仅当主事实源缺失时，../kg 才作为只读兜底来源。',
         input.nonInteractive
       ),
       ...baseQuestions.slice(3)
@@ -308,9 +308,9 @@ function buildQuestions(input: GoalWorkflowInput, model: GameHubReadOnlyModel): 
       question(
         answers,
         'kg-source-paths',
-        'Which KG Cocos and KG PHP paths prove the target game behavior?',
-        'Feature inventory and parity ledger must be source-proven before runtime work.',
-        '../kg-cocos-client and ../kg-php are read-only primary sources; ../kg is a read-only fallback only when primary sources are missing.',
+        '哪些 KG Cocos 和 KG PHP 路径可以证明目标游戏行为？',
+        '进入 runtime work 前，功能盘点和 parity ledger 必须有源码证据。',
+        '../kg-cocos-client 和 ../kg-php 是只读主事实源；仅当主事实源缺失时，../kg 才作为只读兜底来源。',
         input.nonInteractive
       ),
       ...baseQuestions.slice(3)
@@ -1620,6 +1620,8 @@ function aiPromptMarkdown(workflow: SelvedgeGoalWorkflow): string {
     '',
     'Rules:',
     '',
+    '- Use Simplified Chinese as the primary language when asking the user intake questions and when summarizing answers.',
+    '- Keep technical identifiers, paths, commands, package names, and JSON field names in their original form.',
     '- Do not start implementation during intake.',
     '- Do not guess authority sources when project safety depends on them.',
     '- Convert every answer into durable requirements.',
