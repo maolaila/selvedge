@@ -1,0 +1,58 @@
+{
+  "name": "@maolaila/selvedge",
+  "version": "0.1.0",
+  "description": "Local CLI and dashboard control plane for bounded coding-agent workflows",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maolaila/selvedge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maolaila/selvedge/issues"
+  },
+  "homepage": "https://github.com/maolaila/selvedge#readme",
+  "keywords": [
+    "agent",
+    "automation",
+    "codex",
+    "cli",
+    "dashboard",
+    "workflow",
+    "task-runner"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "selvedge": "dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/cli.js",
+    "dev": "bun src/cli.ts",
+    "lint": "echo skip",
+    "test": "bun test src",
+    "prepack": "pnpm run build",
+    "pack:dry-run": "npm pack --dry-run"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.13",
+    "@types/node": "^20.16.10",
+    "typescript": "^5.6.2"
+  },
+  "packageManager": "pnpm@9.12.1"
+}
