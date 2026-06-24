@@ -59,7 +59,7 @@ export function createKgSlotsDogfoodPlan(target: string, model: GameHubReadOnlyM
         role: 'selvedge-control-plane',
         workstream: 'kg-micro-shell',
         roadmapNode: 'Selvedge dogfood / KG slots / task model shadow validation',
-        runner: '@maolaila/selvedge',
+        runner: '@maolaila1/selvedge',
         writeSet: [
           '.selvedge/tasks/**',
           '.selvedge/status/**',
@@ -85,7 +85,7 @@ export function createKgSlotsDogfoodPlan(target: string, model: GameHubReadOnlyM
         role: 'selvedge-control-plane',
         workstream: 'kg-micro-shell',
         roadmapNode: 'Selvedge dogfood / KG slots / wrapper dry-run',
-        runner: '@maolaila/selvedge',
+        runner: '@maolaila1/selvedge',
         writeSet: [
           '.selvedge/status/**',
           '.selvedge/evidence/**',

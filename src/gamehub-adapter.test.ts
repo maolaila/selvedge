@@ -87,7 +87,7 @@ function fixtureRepo(): string {
       '  currentAutopilotIsAuthoritative: false',
       'commercializationPlan:',
       '  distribution:',
-      '    packageName: "@maolaila/selvedge"',
+      '    packageName: "@maolaila1/selvedge"',
       '  developmentMode:',
       '    primaryBuilder: codex-app-agent',
       '  firstDogfoodTask:',

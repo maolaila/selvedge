@@ -183,12 +183,12 @@ export function validateSelvedgeConfig(config: SelvedgeConfigState): readonly Se
       message: 'GameHub default-entry phase requires old Autopilot scripts to be compatibility entries, not authoritative.'
     });
   }
-  if (config.packageName !== '@maolaila/selvedge') {
+  if (config.packageName !== '@maolaila1/selvedge') {
     issues.push({
       code: 'selvedge.config.packageName',
       severity: 'warning',
       file: config.path,
-      message: 'Expected commercializationPlan.distribution.packageName to be @maolaila/selvedge.'
+      message: 'Expected commercializationPlan.distribution.packageName to be @maolaila1/selvedge.'
     });
   }
   if (config.primaryBuilder && !VALID_PRIMARY_BUILDERS.has(config.primaryBuilder)) {

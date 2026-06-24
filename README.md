@@ -11,15 +11,15 @@ under `.selvedge/`.
 ## Install
 
 ```sh
-pnpm dlx @maolaila/selvedge init
-pnpm dlx @maolaila/selvedge status
-pnpm dlx @maolaila/selvedge dashboard
+pnpm dlx @maolaila1/selvedge init
+pnpm dlx @maolaila1/selvedge status
+pnpm dlx @maolaila1/selvedge dashboard
 ```
 
 After a global install:
 
 ```sh
-npm install -g @maolaila/selvedge
+npm install -g @maolaila1/selvedge
 selvedge init
 selvedge dashboard
 ```
